@@ -38,7 +38,7 @@
       font-family: "Pixelated MS Sans Serif", Arial, sans-serif !important;
     }
 
-    /* 頂部管理工具列 */
+    /* 頂部管理選單 */
     .top-bar-wrapper {
       position: absolute;
       top: max(6px, env(safe-area-inset-top, 6px));
@@ -62,7 +62,7 @@
     .admin-only { display: none !important; }
     body.admin-mode .admin-only { display: inline-flex !important; }
 
-    /* 主舞台區 */
+    /* 主舞台 */
     .app-container {
       position: absolute;
       top: 0; left: 0; right: 0;
@@ -71,10 +71,9 @@
       overflow: hidden;
     }
 
-    /* 頂部銀河標題 */
     .galaxy-header {
       position: absolute;
-      top: 45px; left: 0; right: 0;
+      top: 42px; left: 0; right: 0;
       text-align: center;
       z-index: 10;
       pointer-events: none;
@@ -88,13 +87,12 @@
       font-family: monospace, sans-serif;
     }
     .galaxy-header p {
-      margin: 4px 0 0;
+      margin: 3px 0 0;
       font-size: 11px;
       color: #8bb5ff;
       letter-spacing: 1px;
     }
 
-    /* 3D 銀河 Canvas 畫布 */
     .galaxy-canvas-wrap {
       flex: 1; width: 100%; height: 100%;
       position: relative;
@@ -108,7 +106,7 @@
       display: none;
       position: absolute;
       top: 40px; left: 6px; right: 6px;
-      bottom: 42px; /* 預留半透明按鍵空間，絕不遮擋視訊 */
+      bottom: 42px;
       background: #000;
       z-index: 25;
       padding: 4px;
@@ -117,14 +115,14 @@
     }
     .video-chat-container.active {
       display: grid;
-      grid-template-columns: 1fr 1fr; /* 電腦版左右分割 */
+      grid-template-columns: 1fr 1fr;
     }
     @media (max-width: 768px) {
       .video-chat-container.active {
         top: 36px;
         bottom: 38px;
         grid-template-columns: 1fr;
-        grid-template-rows: 1fr 1fr; /* 手機版上下分割 */
+        grid-template-rows: 1fr 1fr;
       }
     }
 
@@ -163,11 +161,11 @@
       position: absolute; font-size: 11px; color: #aaa; text-align: center; padding: 8px;
     }
 
-    /* 下方半透明黑底按鍵列 (往下移且不擋視訊) */
+    /* 半透明黑底按鈕列 */
     .planet-selector-bar {
       position: absolute;
-      bottom: 4px; left: 0; right: 0;
-      height: 34px;
+      bottom: 6px; left: 0; right: 0;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -192,6 +190,7 @@
       gap: 5px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.5);
       transition: all 0.2s ease;
+      white-space: nowrap;
     }
     .planet-chip:hover {
       background: rgba(30, 144, 255, 0.8) !important;
@@ -204,7 +203,7 @@
       color: #ffff80 !important;
     }
 
-    /* Win98 工作列 */
+    /* 工作列 */
     .taskbar {
       position: fixed; bottom: 0; left: 0; right: 0;
       height: var(--taskbar-h); min-height: 38px;
@@ -241,12 +240,13 @@
 </head>
 <body onclick="handleGlobalClick(event)">
 
-  <!-- 頂部管理列 -->
   <div class="top-bar-wrapper" id="topBarWrapper">
     <div class="top-actions-viewport" id="topActionsViewport">
       <button id="authBtn" onclick="toggleAdmin(event)">🔒 管理員</button>
-      <button class="admin-only" onclick="editCurrentPlanetPrompt()">✏️ 編輯當前視訊影片網址</button>
-      <button class="admin-only" onclick="exportGalaxyState()">💾 永久儲存</button>
+      <button class="admin-only" style="background:#fff2b2;" onclick="addNewPlanet()">+ 新增星系星球</button>
+      <button class="admin-only" onclick="editCurrentPlanetPrompt()">✏️ 編輯當前星系</button>
+      <button class="admin-only" onclick="deleteCurrentPlanetPrompt()">❌ 刪除當前星系</button>
+      <button class="admin-only" style="background:#000080; color:#fff; font-weight:bold;" onclick="exportGalaxyState()">💾 永久儲存代碼</button>
     </div>
   </div>
 
@@ -256,26 +256,22 @@
       <p>SELECT A PLANET TO START VIDEO CALL</p>
     </div>
 
-    <!-- 3D 銀河畫布 -->
     <div class="galaxy-canvas-wrap" id="galaxyCanvasWrap">
       <canvas id="galaxyCanvas"></canvas>
     </div>
 
-    <!-- 視訊通話畫面 -->
     <div class="video-chat-container" id="videoChatContainer">
-      <!-- Winter 視訊 -->
       <div class="video-win">
         <div class="video-win-header">
           <span id="winterVideoTitle">🪐 WINTER</span>
-          <span style="font-size:10px; color:#a2ffb3;">LIVE ●</span>
+          <span style="font-size:10px; color:#a2ffb3;">LIVE REC ●</span>
         </div>
         <div class="video-win-body">
           <iframe id="winterVideoIframe" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-          <video id="winterVideoDirect" playsinline controls loop></video>
+          <video id="winterVideoDirect" autoplay playsinline controls loop></video>
         </div>
       </div>
 
-      <!-- 使用者鏡頭 -->
       <div class="video-win">
         <div class="video-win-header">
           <span>👤 YOU (LOCAL CAMERA)</span>
@@ -288,7 +284,6 @@
       </div>
     </div>
 
-    <!-- 下方半透明星球按鍵 (不擋視訊) -->
     <div class="planet-selector-bar" id="planetSelectorBar"></div>
   </div>
 
@@ -333,7 +328,7 @@
     const ADMIN_PASSWORD = "admin";
     let isAdmin = false;
 
-    // 核心資料庫 (真實行星配色紋理 + 3 顆特定星系)
+    // 核心資料庫 (真實行星配色紋理 + 預設星系)
     const GALAXY_MASTER_CONFIG = {
       "planets": [
         {
@@ -356,7 +351,7 @@
           "detailColor": "#962d00",
           "ring": false,
           "size": 15,
-          "orbitIndex": 4,
+          "orbitIndex": 3.8,
           "speed": 0.005,
           "videoUrl": "https://www.youtube.com/watch?v=phuiAIQAxZ4"
         },
@@ -368,28 +363,26 @@
           "detailColor": "#16a085",
           "ring": true,
           "size": 14,
-          "orbitIndex": 6,
-          "speed": 0.0035,
+          "orbitIndex": 5.4,
+          "speed": 0.0038,
           "videoUrl": "https://www.youtube.com/watch?v=D8VEhcPeSlc"
         }
       ]
     };
 
-    // 其他伴生真實行星 (無標記文字，豐富星系)
     const EXTRA_PLANETS = [
       { name: "Mercury", isNamed: false, baseColor: "#a6a6a6", detailColor: "#666", size: 6, orbitIndex: 1, speed: 0.012 },
       { name: "Venus", isNamed: false, baseColor: "#e0c184", detailColor: "#9c7c38", size: 9, orbitIndex: 1.5, speed: 0.009 },
-      { name: "Earth", isNamed: false, baseColor: "#2980b9", detailColor: "#27ae60", size: 10, orbitIndex: 3, speed: 0.006 },
-      { name: "Jupiter", isNamed: false, baseColor: "#cca066", detailColor: "#8f5b23", size: 18, orbitIndex: 5, speed: 0.004 },
-      { name: "Uranus", isNamed: false, baseColor: "#70d6ff", detailColor: "#4cc9f0", size: 12, orbitIndex: 7, speed: 0.0028 },
-      { name: "Neptune", isNamed: false, baseColor: "#3a0ca3", detailColor: "#4361ee", size: 11, orbitIndex: 8, speed: 0.0022 }
+      { name: "Earth", isNamed: false, baseColor: "#2980b9", detailColor: "#27ae60", size: 10, orbitIndex: 2.8, speed: 0.006 },
+      { name: "Jupiter", isNamed: false, baseColor: "#cca066", detailColor: "#8f5b23", size: 18, orbitIndex: 4.6, speed: 0.004 },
+      { name: "Uranus", isNamed: false, baseColor: "#70d6ff", detailColor: "#4cc9f0", size: 12, orbitIndex: 6.2, speed: 0.0028 },
+      { name: "Neptune", isNamed: false, baseColor: "#3a0ca3", detailColor: "#4361ee", size: 11, orbitIndex: 7.2, speed: 0.0022 }
     ];
 
-    const CONFIG_KEY = "winter_galaxy_config_v2026_final";
+    const CONFIG_KEY = "winter_galaxy_config_v2026_autohd";
     let saved = localStorage.getItem(CONFIG_KEY);
     let galaxyConfig = saved ? JSON.parse(saved) : GALAXY_MASTER_CONFIG;
     let mainPlanets = galaxyConfig.planets;
-    let allPlanets = [...mainPlanets, ...EXTRA_PLANETS];
 
     let activePlanetIndex = 0;
     let userCameraStream = null;
@@ -416,7 +409,7 @@
       saveGalaxyState();
       const code = `const GALAXY_MASTER_CONFIG = ${JSON.stringify(galaxyConfig, null, 2)};`;
       navigator.clipboard.writeText(code).then(() => {
-        alert("✅ 成功複製配置代碼！可直接貼回 index.html 永久儲存。");
+        alert("✅ 成功複製最新配置代碼！貼回 index.html 即可永久儲存。");
       }).catch(() => {
         prompt("請複製以下配置代碼：", code);
       });
@@ -435,7 +428,7 @@
           isAdmin = true;
           document.body.classList.add('admin-mode');
           document.getElementById('authBtn').innerText = "🔓 退出管理";
-          alert("登入成功！已解鎖視訊網址編輯。");
+          alert("登入成功！已解鎖新增星球、修改星系與影片網址功能。");
         } else if (input !== null) {
           alert("密碼錯誤！");
         }
@@ -492,6 +485,7 @@
       initUserWebcam();
     }
 
+    // 自動播放與最高畫質 (YouTube / Google 雲端 / 本地)
     function playWinterVideo(url) {
       const iframe = document.getElementById('winterVideoIframe');
       const directVideo = document.getElementById('winterVideoDirect');
@@ -511,12 +505,17 @@
         else if (url.includes("youtu.be/")) vid = url.split("youtu.be/")[1].substring(0, 11);
         directVideo.style.display = 'none'; directVideo.pause();
         iframe.style.display = 'block';
-        iframe.src = `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0`;
+        // 注入最高畫質 (hd1080) 與自動播放參數
+        iframe.src = `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=0&vq=hd1080&high_res=1&playsinline=1&controls=1&enablejsapi=1&rel=0`;
       } else {
         iframe.style.display = 'none'; iframe.src = '';
         directVideo.style.display = 'block';
         directVideo.src = url;
-        directVideo.play().catch(()=>{});
+        directVideo.muted = false;
+        directVideo.play().catch(() => {
+          directVideo.muted = true;
+          directVideo.play();
+        });
       }
     }
 
@@ -537,7 +536,7 @@
           hint.style.display = 'block';
           hint.innerText = "正在連線鏡頭 (僅於本機運作)...";
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
             audio: false
           });
           userCameraStream = stream;
@@ -562,20 +561,70 @@
       if (v) v.srcObject = null;
     }
 
+    // 管理員管理星球功能
+    function addNewPlanet() {
+      const name = prompt("請輸入新星系名稱：", "WINTER" + Math.floor(Math.random()*9000+1000));
+      if (!name) return;
+      const url = prompt("請輸入 Winter 視訊影片網址 (YouTube 或 Google 雲端影片)：");
+      if (!url) return;
+
+      const colors = [
+        { base: "#f8c575", detail: "#b87333" },
+        { base: "#d35400", detail: "#962d00" },
+        { base: "#1abc9c", detail: "#16a085" },
+        { base: "#e74c3c", detail: "#962d00" },
+        { base: "#9b59b6", detail: "#5b2c6f" }
+      ];
+      const chosen = colors[mainPlanets.length % colors.length];
+
+      mainPlanets.push({
+        id: "planet_" + Date.now(),
+        name: name.trim(),
+        isNamed: true,
+        baseColor: chosen.base,
+        detailColor: chosen.detail,
+        ring: Math.random() > 0.4,
+        size: 13,
+        orbitIndex: 2.2 + mainPlanets.length * 1.1,
+        speed: 0.005 - (mainPlanets.length * 0.0006),
+        videoUrl: url.trim()
+      });
+
+      saveGalaxyState();
+      alert(`星系「${name}」已新增！`);
+    }
+
     function editCurrentPlanetPrompt() {
       const p = mainPlanets[activePlanetIndex];
       if (!p) return;
+
+      const newName = prompt("重新命名星系名稱：", p.name);
+      if (newName) p.name = newName.trim();
+
       const url = prompt("更改當前星系的 Winter 視訊影片網址：", p.videoUrl);
-      if (url) {
-        p.videoUrl = url.trim();
-        saveGalaxyState();
-        if (document.getElementById('videoChatContainer').classList.contains('active')) {
-          playWinterVideo(p.videoUrl);
-        }
+      if (url) p.videoUrl = url.trim();
+
+      saveGalaxyState();
+      if (document.getElementById('videoChatContainer').classList.contains('active')) {
+        playWinterVideo(p.videoUrl);
       }
     }
 
-    // Canvas 繪圖：真實行星質感 + 點擊判定
+    function deleteCurrentPlanetPrompt() {
+      if (mainPlanets.length <= 1) {
+        alert("至少需保留一個星系！");
+        return;
+      }
+      const p = mainPlanets[activePlanetIndex];
+      if (confirm(`確定刪除星系「${p.name}」嗎？`)) {
+        mainPlanets.splice(activePlanetIndex, 1);
+        activePlanetIndex = 0;
+        saveGalaxyState();
+        returnToGalaxyMap();
+      }
+    }
+
+    // Canvas 繪圖：防手機超出長度優化 + 真實行星
     function initGalaxySystem() {
       const canvas = document.getElementById('galaxyCanvas');
       if (!canvas) return;
@@ -590,7 +639,6 @@
       resize();
       window.addEventListener('resize', resize);
 
-      // 支援在畫布上直接點擊星球跳轉視訊
       canvas.addEventListener('click', (e) => {
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -599,7 +647,7 @@
         for (let i = 0; i < planetScreenCoords.length; i++) {
           const p = planetScreenCoords[i];
           const dist = Math.hypot(mouseX - p.x, mouseY - p.y);
-          if (dist <= p.size + 12) {
+          if (dist <= p.size + 14) {
             selectPlanetAndZoom(p.mainIndex);
             break;
           }
@@ -615,9 +663,9 @@
         ctx.clearRect(0, 0, w, h);
         planetScreenCoords = [];
 
-        // 背景星塵
+        // 背景星空
         ctx.fillStyle = "#ffffff";
-        for (let i = 0; i < 55; i++) {
+        for (let i = 0; i < 50; i++) {
           const sx = (Math.sin(i * 123 + galaxyAngle * 0.05) * 0.5 + 0.5) * w;
           const sy = (Math.cos(i * 77 + galaxyAngle * 0.04) * 0.5 + 0.5) * h;
           const sz = (i % 4 === 0) ? 1.8 : 1;
@@ -634,7 +682,7 @@
         ctx.translate(cx, cy);
         if (isZooming) ctx.scale(zoomFactor, zoomFactor);
 
-        // 中心恆星 (Winter Sun)
+        // 恆星 (Winter Sun)
         const sunGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 48);
         sunGrad.addColorStop(0, '#ffffff');
         sunGrad.addColorStop(0.25, '#7bc4ff');
@@ -650,8 +698,9 @@
         ctx.arc(0, 0, 18, 0, Math.PI * 2);
         ctx.fill();
 
-        // 8條以上同心軌道
-        const orbitBaseX = Math.min(w, h) * 0.16;
+        // 智慧手機自適應防超出：依螢幕寬窄縮放軌道長軸
+        const isMobile = w < 768;
+        const orbitBaseX = isMobile ? (w * 0.11) : (Math.min(w, h) * 0.16);
         const orbitBaseY = orbitBaseX * 0.44;
 
         for (let i = 1; i <= 8; i++) {
@@ -662,8 +711,9 @@
           ctx.stroke();
         }
 
-        // 繪製全體行星
-        allPlanets.forEach((planet) => {
+        const combined = [...mainPlanets, ...EXTRA_PLANETS];
+
+        combined.forEach((planet) => {
           const rx = orbitBaseX * planet.orbitIndex;
           const ry = orbitBaseY * planet.orbitIndex;
           const angle = galaxyAngle * (planet.speed * 60) + (planet.orbitIndex * 1.6);
@@ -673,7 +723,7 @@
           ctx.save();
           ctx.translate(px, py);
 
-          // 產生逼真星球球體漸層 (3D 光影)
+          // 逼真球體光影漸層
           const grad = ctx.createRadialGradient(-planet.size * 0.3, -planet.size * 0.3, planet.size * 0.1, 0, 0, planet.size);
           grad.addColorStop(0, '#fff');
           grad.addColorStop(0.3, planet.baseColor);
@@ -685,7 +735,6 @@
           ctx.arc(0, 0, planet.size, 0, Math.PI * 2);
           ctx.fill();
 
-          // 土星型行星環
           if (planet.ring) {
             ctx.strokeStyle = "rgba(255, 235, 180, 0.65)";
             ctx.lineWidth = 2.5;
@@ -694,7 +743,6 @@
             ctx.stroke();
           }
 
-          // 只為三顆指定星球繪製名稱與收集點擊座標
           if (planet.isNamed) {
             ctx.fillStyle = "#ffffff";
             ctx.font = "bold 11px monospace";
