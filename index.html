@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>WINTER GALAXY</title>
+
+  <meta property="og:title" content="WINTER GALAXY">
+  <meta property="og:description" content="Talk to WINTER somewhere in unknown galaxy">
+  <meta property="og:image" content="https://lh3.googleusercontent.com/d/1FxNNT9a2bBobCvFCBaI1ze3d7fVsPm9g">
+
+  <link rel="stylesheet" href="https://unpkg.com/98.css">
+  <style>
+    * { 
+      box-sizing: border-box; 
+      -webkit-tap-highlight-color: transparent; 
+      user-select: none;
+    }
+    
+    :root {
+      --star-cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><polygon points='12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9' fill='%23FFD700' stroke='%23B8860B' stroke-width='1.5'/></svg>") 4 4, auto;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --taskbar-h: calc(38px + var(--safe-bottom));
+    }
+
+    html, body {
+      margin: 0; padding: 0;
+      width: 100vw; height: 100vh;
+      overflow: hidden;
+      background: #02020a;
+      font-family: "Pixelated MS Sans Serif", Arial, sans-serif !important;
+    }
+
+    button, a, .galaxy-bottom-bar button, .start-menu li {
+      cursor: var(--star-cursor) !important;
+      font-family: "Pixelated MS Sans Serif", Arial, sans-serif !important;
+    }
+
+    /* 頂部管理工具列 */
+    .top-bar-wrapper {
+      position: absolute;
+      top: max(6px, env(safe-area-inset-top, 6px));
+      left: max(6px, var(--safe-left));
+      right: max(6px, var(--safe-right));
+      z-index: 100; display: flex; flex-direction: column;
+      background: transparent; border: none; pointer-events: none;
+    }
+    body.admin-mode .top-bar-wrapper {
+      background: #c0c0c0; border: 2px outset #fff; padding: 3px;
+      box-shadow: 1px 1px 4px rgba(0,0,0,0.4); pointer-events: auto;
+    }
+    .top-actions-viewport {
+      display: flex; gap: 4px; overflow-x: hidden; white-space: nowrap; pointer-events: auto;
+    }
+    .top-actions-viewport button, .top-actions-viewport span {
+      flex-shrink: 0; font-size: 11px; padding: 2px 6px; cursor: pointer; height: 25px;
+    }
+    #authBtn { pointer-events: auto; align-self: flex-start; }
+
+    .admin-scrollbar-bar {
+      display: none; height: 16px; background: #c0c0c0; border-top: 1px solid #808080;
+      margin-top: 3px; align-items: center; position: relative;
+    }
+    body.admin-mode .admin-scrollbar-bar { display: flex; }
+    .scrollbar-btn {
+      width: 16px; height: 16px; padding: 0; font-size: 8px; font-weight: bold;
+      border: 1px outset #fff; background: #c0c0c0; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; cursor: pointer;
+    }
+    .scrollbar-btn:active { border: 1px inset #fff; }
+    .scrollbar-track {
+      flex: 1; height: 100%;
+      background: repeating-conic-gradient(#c0c0c0 0% 25%, #ffffff 0% 50%) 50% / 2px 2px;
+      position: relative; cursor: pointer;
+    }
+    .scrollbar-thumb {
+      position: absolute; top: 0; left: 0; width: 40px; height: 100%;
+      background: #c0c0c0; border: 1px outset #fff; cursor: grab;
+    }
+
+    .admin-only { display: none !important; }
+    body.admin-mode .admin-only { display: inline-flex !important; }
+
+    /* 主舞台區 */
+    .app-container {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      bottom: var(--taskbar-h);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* 頂部銀河文字標題 (參考 unknownpla.net) */
+    .galaxy-header {
+      position: absolute;
+      top: 48px; left: 0; right: 0;
+      text-align: center;
+      z-index: 10;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .galaxy-header h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 3px;
+      color: #9bd6ff;
+      text-shadow: 0 0 8px #1e90ff, 0 0 20px #000;
+      font-family: monospace, sans-serif;
+    }
+    .galaxy-header p {
+      margin: 4px 0 0;
+      font-size: 11px;
+      color: #8bb5ff;
+      letter-spacing: 1px;
+    }
+
+    /* 3D 銀河 Canvas 畫布 */
+    .galaxy-canvas-wrap {
+      flex: 1; width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    #galaxyCanvas {
+      width: 100%; height: 100%; display: block;
+    }
+
+    /* 雙視訊分割視窗 (電腦左右，手機上下) */
+    .video-chat-container {
+      display: none;
+      position: absolute;
+      top: 42px; left: 8px; right: 8px; bottom: 50px;
+      background: #0b0f19;
+      z-index: 25;
+      padding: 6px;
+      gap: 8px;
+    }
+    .video-chat-container.active {
+      display: grid;
+      grid-template-columns: 1fr 1fr; /* 電腦左右雙格 */
+    }
+    @media (max-width: 768px) {
+      .video-chat-container.active {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr; /* 手機上下雙格 */
+      }
+    }
+
+    .video-win {
+      position: relative;
+      background: #000;
+      border: 2px outset #fff;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .video-win-header {
+      background: linear-gradient(90deg, #104e8b, #1e90ff);
+      color: #fff;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 3px 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .video-win-body {
+      position: relative;
+      flex: 1; width: 100%; height: 100%;
+      background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .video-win-body video, .video-win-body iframe {
+      width: 100%; height: 100%; border: none; object-fit: cover;
+    }
+    .mirror-cam { transform: scaleX(-1); }
+    .cam-hint {
+      position: absolute; font-size: 11px; color: #bbb; text-align: center; padding: 12px;
+    }
+
+    /* 底部星系選擇導航列 */
+    .galaxy-bottom-bar {
+      position: absolute;
+      bottom: var(--taskbar-h);
+      left: 0; right: 0;
+      height: 44px;
+      background: #c0c0c0;
+      border-top: 2px outset #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      z-index: 30;
+    }
+    .galaxy-bottom-bar button {
+      height: 28px;
+      font-size: 11px;
+      padding: 0 10px;
+      white-space: nowrap;
+    }
+    .galaxy-bottom-bar button.active-planet {
+      background: #000080 !important;
+      color: #fff !important;
+      font-weight: bold;
+    }
+
+    /* Win98 工作列 */
+    .taskbar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: var(--taskbar-h); min-height: 38px;
+      background: #c0c0c0; border-top: 2px solid #fff;
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding-top: 4px;
+      padding-left: max(8px, var(--safe-left));
+      padding-right: max(14px, var(--safe-right));
+      padding-bottom: max(6px, var(--safe-bottom));
+      z-index: 2500;
+    }
+    .taskbar-left { display: flex; align-items: center; gap: 4px; overflow-x: auto; flex: 1; }
+    .taskbar-right { font-size: 11px; display: flex; align-items: center; padding-left: 8px; flex-shrink: 0; height: 26px; }
+    .taskbar-right a { color: #000; text-decoration: none; font-weight: bold; border-bottom: 1px dotted #555; }
+
+    /* 開始選單 */
+    .start-menu {
+      position: fixed; bottom: var(--taskbar-h); left: max(6px, var(--safe-left));
+      width: 250px; background: #c0c0c0; border: 2px outset #fff;
+      box-shadow: 3px 3px 12px rgba(0,0,0,0.5); display: none; z-index: 3000; padding: 3px;
+    }
+    .start-menu-banner {
+      background: linear-gradient(180deg, #104e8b, #1e90ff);
+      color: #fff; font-weight: bold; padding: 8px 10px; font-size: 13px; margin-bottom: 4px;
+      letter-spacing: 1px;
+    }
+    .start-menu ul { list-style: none; margin: 0; padding: 0; }
+    .start-menu li {
+      padding: 7px 10px; font-size: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .start-menu li:hover { background: #000080; color: #fff; }
+    .start-menu a { color: inherit; text-decoration: none; display: flex; align-items: center; gap: 8px; width: 100%; }
+  </style>
+</head>
+<body onclick="handleGlobalClick(event)">
+
+  <!-- 頂部管理列 -->
+  <div class="top-bar-wrapper" id="topBarWrapper">
+    <div class="top-actions-viewport" id="topActionsViewport">
+      <button id="authBtn" onclick="toggleAdmin(event)">🔒 管理員</button>
+      <button class="admin-only" style="background:#fff2b2;" onclick="addNewPlanet()">+ 新增星系星球</button>
+      <button class="admin-only" onclick="editCurrentPlanet()">✏️ 編輯當前星系</button>
+      <button class="admin-only" onclick="deleteCurrentPlanet()">❌ 刪除當前星系</button>
+      <button class="admin-only" style="background:#000080; color:#fff; font-weight:bold;" onclick="exportGalaxyState()">💾 永久儲存代碼</button>
+    </div>
+
+    <div class="admin-scrollbar-bar" id="adminScrollbarBar">
+      <button type="button" class="scrollbar-btn" onclick="scrollAdminBar(-100)">◀</button>
+      <div class="scrollbar-track" id="scrollbarTrack" onclick="handleTrackClick(event)">
+        <div class="scrollbar-thumb" id="scrollbarThumb"></div>
+      </div>
+      <button type="button" class="scrollbar-btn" onclick="scrollAdminBar(100)">▶</button>
+    </div>
+  </div>
+
+  <!-- 舞台畫布與視訊區 -->
+  <div class="app-container">
+    <div class="galaxy-header" id="galaxyHeader">
+      <h2>WINTER GALAXY</h2>
+      <p>TALK TO WINTER, SOMEWHERE IN UNKNOWN PLANET</p>
+    </div>
+
+    <!-- 3D 旋轉星系畫布 -->
+    <div class="galaxy-canvas-wrap" id="galaxyCanvasWrap">
+      <canvas id="galaxyCanvas"></canvas>
+    </div>
+
+    <!-- 視訊通話分割畫面 -->
+    <div class="video-chat-container" id="videoChatContainer">
+      <!-- WINTER 視訊視窗 -->
+      <div class="video-win">
+        <div class="video-win-header">
+          <span id="winterVideoHeaderTitle">🪐 WINTER</span>
+          <span style="font-size:10px; color:#a2ffb3;">LIVE ●</span>
+        </div>
+        <div class="video-win-body">
+          <iframe id="winterVideoIframe" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+          <video id="winterVideoDirect" playsinline controls loop></video>
+        </div>
+      </div>
+
+      <!-- 使用者本機視訊視窗 -->
+      <div class="video-win">
+        <div class="video-win-header">
+          <span>👤 YOU (LOCAL CAMERA)</span>
+          <button type="button" style="font-size:9px; padding:0 4px;" onclick="initUserWebcam()">重試相機</button>
+        </div>
+        <div class="video-win-body">
+          <div class="cam-hint" id="camHint">連線相機中... 若瀏覽器詢問請點選「允許」</div>
+          <video id="userCamVideo" class="mirror-cam" autoplay playsinline muted></video>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部星系列表 -->
+    <div class="galaxy-bottom-bar" id="galaxyBottomBar">
+      <button type="button" onclick="returnToGalaxyMap()" style="font-weight:bold; background:#e0f7fa;">🌌 返回銀河</button>
+      <span style="color:#888;">|</span>
+      <div id="planetsBtnGroup" style="display:inline-flex; gap:4px;"></div>
+    </div>
+  </div>
+
+  <!-- 開始選單 (左下角 WINTER 按鍵) -->
+  <div id="startMenu" class="start-menu" onclick="event.stopPropagation()">
+    <div class="start-menu-banner">⭐ WINTER GALAXY</div>
+    <ul>
+      <li>
+        <a href="https://u11150003-arch.github.io/2027-winter-bday-desktop/">
+          🖥️ <strong>1. 回到原始 Desktop 網頁</strong>
+        </a>
+      </li>
+      <li>
+        <a href="https://u11150003-arch.github.io/winter-cd-player/">
+          💿 <strong>2. 前往 WINTER CD PLAYER</strong>
+        </a>
+      </li>
+      <hr style="margin:4px 0;">
+      <li onclick="toggleAdmin(event); toggleStartMenu(event);">⚙️ 切換管理員模式</li>
+    </ul>
+  </div>
+
+  <!-- 工作列 -->
+  <div class="taskbar">
+    <div class="taskbar-left">
+      <button type="button" onclick="toggleStartMenu(event)" style="font-weight:bold; display:flex; align-items:center; gap:4px; height:26px; padding:0 6px;">
+        <img src="https://win98icons.alexmeub.com/icons/png/windows-0.png" width="16" height="16"> WINTER
+      </button>
+      <button type="button" onclick="returnToGalaxyMap()" style="font-weight:bold; display:flex; align-items:center; gap:4px; height:26px; padding:0 6px;">
+        🪐 GALAXY
+      </button>
+    </div>
+    <div class="taskbar-right">
+      <a href="https://www.instagram.com/winter_tst" target="_blank">Copyright © : winter_tst</a>
+    </div>
+  </div>
+
+  <script>
+    const ADMIN_PASSWORD = "admin";
+    let isAdmin = false;
+
+    // 核心資料庫 (預設 3 個星系，可自由擴充與編輯)
+    const GALAXY_MASTER_CONFIG = {
+      "planets": [
+        {
+          "id": "planet_0101",
+          "name": "WINTER0101",
+          "color": "#ffd166",
+          "ring": true,
+          "videoUrl": "https://www.youtube.com/watch?v=YTeFLKMnwjg"
+        },
+        {
+          "id": "planet_1117",
+          "name": "WINTER1117",
+          "color": "#ef476f",
+          "ring": false,
+          "videoUrl": "https://www.youtube.com/watch?v=phuiAIQAxZ4"
+        },
+        {
+          "id": "planet_0618",
+          "name": "PONYO0618",
+          "color": "#06d6a0",
+          "ring": true,
+          "videoUrl": "https://www.youtube.com/watch?v=D8VEhcPeSlc"
+        }
+      ]
+    };
+
+    const CONFIG_KEY = "winter_galaxy_config_v2026_standalone";
+    let savedConfig = localStorage.getItem(CONFIG_KEY);
+    let galaxyConfig = savedConfig ? JSON.parse(savedConfig) : GALAXY_MASTER_CONFIG;
+    let planetsData = galaxyConfig.planets;
+
+    let activePlanetIndex = 0;
+    let userCameraStream = null;
+    let galaxyAnimFrame = null;
+    let galaxyAngle = 0;
+    let isZooming = false;
+    let zoomFactor = 1;
+    let targetPlanet = null;
+
+    function extractDriveId(url) {
+      if (!url) return null;
+      const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/) || url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : null;
+    }
+
+    function saveGalaxyState() {
+      galaxyConfig.planets = planetsData;
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(galaxyConfig));
+      renderPlanetButtons();
+    }
+
+    function exportGalaxyState() {
+      saveGalaxyState();
+      const code = `const GALAXY_MASTER_CONFIG = ${JSON.stringify(galaxyConfig, null, 2)};`;
+      navigator.clipboard.writeText(code).then(() => {
+        alert("✅ 成功複製配置代碼！貼回 GitHub index.html 的 GALAXY_MASTER_CONFIG 即可永久儲存。");
+      }).catch(() => {
+        prompt("請複製以下配置代碼：", code);
+      });
+    }
+
+    function toggleAdmin(e) {
+      if (e) e.stopPropagation();
+      if (isAdmin) {
+        isAdmin = false;
+        document.body.classList.remove('admin-mode');
+        document.getElementById('authBtn').innerText = "🔒 管理員";
+        alert("已退出管理員模式");
+      } else {
+        const input = prompt("請輸入管理員密碼：");
+        if (input === ADMIN_PASSWORD) {
+          isAdmin = true;
+          document.body.classList.add('admin-mode');
+          document.getElementById('authBtn').innerText = "🔓 退出管理";
+          setTimeout(updateScrollBarUI, 80);
+          alert("登入成功！已解鎖新增星球、修改星系與影片網址功能。");
+        } else if (input !== null) {
+          alert("密碼錯誤！");
+        }
+      }
+    }
+
+    function renderPlanetButtons() {
+      const group = document.getElementById('planetsBtnGroup');
+      if (!group) return;
+      group.innerHTML = '';
+
+      planetsData.forEach((planet, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = (idx === activePlanetIndex) ? 'active-planet' : '';
+        btn.innerHTML = `🪐 ${planet.name}`;
+        btn.onclick = () => selectPlanetAndZoom(idx);
+        group.appendChild(btn);
+      });
+    }
+
+    function returnToGalaxyMap() {
+      isZooming = false;
+      zoomFactor = 1;
+      targetPlanet = null;
+      document.getElementById('videoChatContainer').classList.remove('active');
+      document.getElementById('galaxyCanvasWrap').style.display = 'flex';
+      document.getElementById('galaxyHeader').style.display = 'block';
+      stopWinterVideo();
+      stopUserWebcam();
+    }
+
+    function selectPlanetAndZoom(index) {
+      activePlanetIndex = index;
+      renderPlanetButtons();
+      targetPlanet = planetsData[index];
+      isZooming = true;
+      zoomFactor = 1;
+
+      setTimeout(() => {
+        enterVideoChat(targetPlanet);
+      }, 650);
+    }
+
+    function enterVideoChat(planet) {
+      document.getElementById('galaxyCanvasWrap').style.display = 'none';
+      document.getElementById('galaxyHeader').style.display = 'none';
+      const container = document.getElementById('videoChatContainer');
+      container.classList.add('active');
+
+      document.getElementById('winterVideoHeaderTitle').innerText = `🪐 WINTER [${planet.name}]`;
+      playWinterVideo(planet.videoUrl);
+      initUserWebcam();
+    }
+
+    function playWinterVideo(url) {
+      const iframe = document.getElementById('winterVideoIframe');
+      const directVideo = document.getElementById('winterVideoDirect');
+      if (!url) return;
+
+      const driveId = extractDriveId(url);
+      if (driveId) {
+        directVideo.style.display = 'none'; directVideo.pause();
+        iframe.style.display = 'block';
+        iframe.src = `https://drive.google.com/file/d/${driveId}/preview`;
+        return;
+      }
+
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        let vid = url;
+        if (url.includes("v=")) vid = url.split("v=")[1].substring(0, 11);
+        else if (url.includes("youtu.be/")) vid = url.split("youtu.be/")[1].substring(0, 11);
+        directVideo.style.display = 'none'; directVideo.pause();
+        iframe.style.display = 'block';
+        iframe.src = `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0`;
+      } else {
+        iframe.style.display = 'none'; iframe.src = '';
+        directVideo.style.display = 'block';
+        directVideo.src = url;
+        directVideo.play().catch(()=>{});
+      }
+    }
+
+    function stopWinterVideo() {
+      const iframe = document.getElementById('winterVideoIframe');
+      const directVideo = document.getElementById('winterVideoDirect');
+      if (iframe) iframe.src = '';
+      if (directVideo) { directVideo.pause(); directVideo.src = ''; }
+    }
+
+    async function initUserWebcam() {
+      const hint = document.getElementById('camHint');
+      const video = document.getElementById('userCamVideo');
+      stopUserWebcam();
+
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          hint.style.display = 'block';
+          hint.innerText = "連線相機中 (僅於本機運作，請放心)...";
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+            audio: false
+          });
+          userCameraStream = stream;
+          video.srcObject = stream;
+          hint.style.display = 'none';
+        } catch (err) {
+          hint.style.display = 'block';
+          hint.innerText = "相機未授權或無相機設備\n已維持單向 WINTER 視訊模式";
+        }
+      } else {
+        hint.style.display = 'block';
+        hint.innerText = "當前環境不支援調用相機設備";
+      }
+    }
+
+    function stopUserWebcam() {
+      if (userCameraStream) {
+        userCameraStream.getTracks().forEach(t => t.stop());
+        userCameraStream = null;
+      }
+      const v = document.getElementById('userCamVideo');
+      if (v) v.srcObject = null;
+    }
+
+    function addNewPlanet() {
+      const name = prompt("請輸入新星系名稱：", "WINTER" + Math.floor(Math.random()*9000+1000));
+      if (!name) return;
+      const rawUrl = prompt("請輸入 Winter 視訊影片網址 (YouTube 或 Google 雲端影片)：");
+      if (!rawUrl) return;
+
+      const colors = ['#ffd166', '#ef476f', '#06d6a0', '#118ab2', '#a0c4ff', '#ffc6ff'];
+      planetsData.push({
+        id: "planet_" + Date.now(),
+        name: name.trim(),
+        color: colors[planetsData.length % colors.length],
+        ring: Math.random() > 0.5,
+        videoUrl: rawUrl.trim()
+      });
+
+      saveGalaxyState();
+      alert(`星系「${name}」已新增完成！`);
+    }
+
+    function editCurrentPlanet() {
+      const planet = planetsData[activePlanetIndex];
+      if (!planet) return;
+      const n = prompt("重新命名星系名稱：", planet.name);
+      if (n) planet.name = n.trim();
+      const u = prompt("更改 Winter 視訊影片網址：", planet.videoUrl);
+      if (u) planet.videoUrl = u.trim();
+
+      saveGalaxyState();
+      if (document.getElementById('videoChatContainer').classList.contains('active')) {
+        enterVideoChat(planet);
+      }
+    }
+
+    function deleteCurrentPlanet() {
+      if (planetsData.length <= 1) {
+        alert("至少需保留一個星系！");
+        return;
+      }
+      const planet = planetsData[activePlanetIndex];
+      if (confirm(`確定刪除星系「${planet.name}」嗎？`)) {
+        planetsData.splice(activePlanetIndex, 1);
+        activePlanetIndex = 0;
+        saveGalaxyState();
+        returnToGalaxyMap();
+      }
+    }
+
+    function initGalaxyAnimation() {
+      const canvas = document.getElementById('galaxyCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      function resize() {
+        const wrap = document.getElementById('galaxyCanvasWrap');
+        if (!wrap) return;
+        canvas.width = wrap.clientWidth;
+        canvas.height = wrap.clientHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      function draw() {
+        const w = canvas.width;
+        const h = canvas.height;
+        const cx = w / 2;
+        const cy = h / 2;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // 背景微光星點
+        ctx.fillStyle = "#ffffff";
+        for (let i = 0; i < 45; i++) {
+          const sx = (Math.sin(i * 91 + galaxyAngle * 0.1) * 0.5 + 0.5) * w;
+          const sy = (Math.cos(i * 37 + galaxyAngle * 0.08) * 0.5 + 0.5) * h;
+          const sz = (i % 3 === 0) ? 1.8 : 1;
+          ctx.globalAlpha = 0.3 + 0.4 * Math.sin(galaxyAngle + i);
+          ctx.fillRect(sx, sy, sz, sz);
+        }
+        ctx.globalAlpha = 1.0;
+
+        if (isZooming && targetPlanet) {
+          zoomFactor += 0.08;
+        }
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        if (isZooming) ctx.scale(zoomFactor, zoomFactor);
+
+        // 中心恆星 (Winter Star)
+        const sunGrad = ctx.createRadialGradient(0, 0, 8, 0, 0, 42);
+        sunGrad.addColorStop(0, '#ffffff');
+        sunGrad.addColorStop(0.3, '#9bd6ff');
+        sunGrad.addColorStop(1, 'rgba(30, 144, 255, 0)');
+        ctx.fillStyle = sunGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 42, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#bce2ff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 18, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 軌道與行星
+        const baseRx = Math.min(w, h) * 0.42;
+        const baseRy = baseRx * 0.45;
+
+        planetsData.forEach((planet, idx) => {
+          const orbitScale = 0.65 + idx * 0.32;
+          const rx = baseRx * orbitScale;
+          const ry = baseRy * orbitScale;
+
+          ctx.strokeStyle = "rgba(100, 180, 255, 0.25)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          const angle = galaxyAngle * (0.8 / (idx + 1)) + (idx * (Math.PI * 2 / planetsData.length));
+          const px = Math.cos(angle) * rx;
+          const py = Math.sin(angle) * ry;
+
+          ctx.save();
+          ctx.translate(px, py);
+
+          const pSize = 11 + (idx % 3) * 2;
+          ctx.fillStyle = planet.color || "#ffd166";
+          ctx.beginPath();
+          ctx.arc(0, 0, pSize, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (planet.ring) {
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, pSize * 1.8, pSize * 0.6, -0.2, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "11px monospace";
+          ctx.textAlign = "center";
+          ctx.fillText(planet.name, 0, pSize + 15);
+
+          ctx.restore();
+        });
+
+        ctx.restore();
+
+        galaxyAngle += 0.012;
+        galaxyAnimFrame = requestAnimationFrame(draw);
+      }
+
+      galaxyAnimFrame = requestAnimationFrame(draw);
+    }
+
+    function toggleStartMenu(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('startMenu');
+      menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function handleGlobalClick(e) {
+      const menu = document.getElementById('startMenu');
+      if (menu) menu.style.display = 'none';
+    }
+
+    // 頂部導航列捲動計算
+    const viewport = document.getElementById('topActionsViewport');
+    const track = document.getElementById('scrollbarTrack');
+    const thumb = document.getElementById('scrollbarThumb');
+
+    function updateScrollBarUI() {
+      if (!isAdmin || !viewport || !track || !thumb) return;
+      const maxScroll = viewport.scrollWidth - viewport.clientWidth;
+      if (maxScroll <= 0) {
+        thumb.style.width = '100%'; thumb.style.left = '0px'; return;
+      }
+      const trackWidth = track.clientWidth;
+      const thumbWidth = Math.max(30, (viewport.clientWidth / viewport.scrollWidth) * trackWidth);
+      thumb.style.width = thumbWidth + 'px';
+      const scrollRatio = viewport.scrollLeft / maxScroll;
+      thumb.style.left = (scrollRatio * (trackWidth - thumbWidth)) + 'px';
+    }
+
+    function scrollAdminBar(amount) {
+      if (!viewport) return;
+      viewport.scrollLeft += amount;
+      updateScrollBarUI();
+    }
+
+    function handleTrackClick(e) {
+      if (e.target === thumb) return;
+      const rect = track.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const thumbWidth = thumb.offsetWidth;
+      const trackWidth = track.clientWidth;
+      const maxScroll = viewport.scrollWidth - viewport.clientWidth;
+      const newScrollLeft = ((clickX - thumbWidth / 2) / (trackWidth - thumbWidth)) * maxScroll;
+      viewport.scrollLeft = Math.max(0, Math.min(maxScroll, newScrollLeft));
+      updateScrollBarUI();
+    }
+
+    window.addEventListener('resize', updateScrollBarUI);
+    window.addEventListener('DOMContentLoaded', () => {
+      initGalaxyAnimation();
+      renderPlanetButtons();
+    });
+  </script>
+</body>
+</html>
