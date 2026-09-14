@@ -228,7 +228,7 @@
       color: #ffff80 !important;
     }
 
-    /* 視訊畫面大小/位置/秒數微調彈窗 */
+    /* 視訊畫面微調面板 */
     .adjust-modal {
       display: none; position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
@@ -278,7 +278,6 @@
     .start-menu li:hover { background: #000080; color: #fff; }
     .start-menu a { color: inherit; text-decoration: none; display: flex; align-items: center; gap: 8px; width: 100%; }
   </style>
-  <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body onclick="handleGlobalClick(event)">
 
@@ -312,10 +311,8 @@
         <div class="video-win-body">
           <div class="video-viewport-box">
             <div class="video-element-wrapper" id="winterVideoWrapper">
-              <div id="ytPlayerContainer" style="width:100%; height:100%; display:none;"></div>
-              <!-- 加入 playsinline 與 crossOrigin 確保 GitHub Release 與雲端串流不被擋 -->
-              <video id="winterVideoDirect" style="display:none;" autoplay playsinline controls crossorigin="anonymous"></video>
-              <iframe id="winterVideoIframe" style="display:none;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+              <iframe id="winterVideoIframe" style="width:100%; height:100%; border:none;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+              <video id="winterVideoDirect" style="width:100%; height:100%; display:none;" autoplay playsinline controls></video>
             </div>
           </div>
         </div>
@@ -413,7 +410,7 @@
     const ADMIN_PASSWORD = "admin";
     let isAdmin = false;
 
-    // 核心資料庫 (PONYO0618 直連你的 GitHub Release 影片)
+    // 核心資料庫 (PONYO0618 換成你的 Shorts，秒數照原始影片設 0)
     const GALAXY_MASTER_CONFIG = {
       "planets": [
         {
@@ -452,7 +449,7 @@
           "size": 14,
           "orbitIndex": 5.4,
           "speed": 0.0038,
-          "videoUrl": "https://github.com/u11150003-arch/winter-galaxy/releases/download/v1.0.0/PONYO0618.mp4",
+          "videoUrl": "https://youtube.com/shorts/Tb1zyU1-IoQ?si=yglr8bcuI3xEFK2M",
           "adjust": { "scale": 100, "x": 50, "y": 50, "start": 0, "end": 0 }
         }
       ]
@@ -467,7 +464,8 @@
       { name: "Neptune", isNamed: false, baseColor: "#3a0ca3", detailColor: "#4361ee", size: 11, orbitIndex: 7.2, speed: 0.0022 }
     ];
 
-    const CONFIG_KEY = "winter_galaxy_config_release_v2026_09_fix";
+    // 升級版本 Key，強制覆蓋舊瀏覽器中的無效快取
+    const CONFIG_KEY = "winter_galaxy_config_v2026_shorts_fix_v8";
     let saved = localStorage.getItem(CONFIG_KEY);
     let galaxyConfig = saved ? JSON.parse(saved) : GALAXY_MASTER_CONFIG;
     let mainPlanets = galaxyConfig.planets;
@@ -481,17 +479,19 @@
     let targetPlanet = null;
     let planetScreenCoords = [];
 
-    let ytPlayer = null;
-    let ytLoopInterval = null;
-
     function extractDriveId(url) {
       if (!url) return null;
       const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/) || url.match(/\/d\/([a-zA-Z0-9_-]+)/);
       return match ? match[1] : null;
     }
 
+    // 全面支援標準 YouTube、短網址 youtu.be 與 YouTube Shorts
     function extractYoutubeId(url) {
       if (!url) return null;
+      if (url.includes("shorts/")) {
+        const id = url.split("shorts/")[1].split("?")[0].split("&")[0];
+        return id.substring(0, 11);
+      }
       if (url.includes("v=")) return url.split("v=")[1].substring(0, 11);
       if (url.includes("youtu.be/")) return url.split("youtu.be/")[1].substring(0, 11);
       if (url.length === 11 && !url.includes("/") && !url.includes(".")) return url.trim();
@@ -597,17 +597,14 @@
       wrapper.style.transform = `scale(${scaleVal}) translate(${transX}%, ${transY}%)`;
     }
 
-    // 核心播放引擎：支援 GitHub Release、Google Drive、YouTube
+    // 核心播放器：支援 YouTube/Shorts、Google 雲端與直接檔案
     function playWinterVideo(planet) {
       const url = planet.videoUrl;
       const iframe = document.getElementById('winterVideoIframe');
       const directVideo = document.getElementById('winterVideoDirect');
-      const ytContainer = document.getElementById('ytPlayerContainer');
       const adj = planet.adjust || { scale: 100, x: 50, y: 50, start: 0, end: 0 };
       const startSec = parseInt(adj.start, 10) || 0;
       const endSec = parseInt(adj.end, 10) || 0;
-
-      clearInterval(ytLoopInterval);
 
       if (!url) return;
 
@@ -615,77 +612,35 @@
       const ytId = extractYoutubeId(url);
 
       if (ytId) {
-        if (directVideo) { directVideo.pause(); directVideo.src = ''; directVideo.style.display = 'none'; }
-        if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
-        ytContainer.style.display = 'block';
+        // YouTube / Shorts 專用 (自動高畫質、自動播放)
+        directVideo.pause(); directVideo.src = ''; directVideo.style.display = 'none';
+        iframe.style.display = 'block';
 
-        if (window.YT && window.YT.Player) {
-          if (ytPlayer && ytPlayer.destroy) ytPlayer.destroy();
-          ytPlayer = new YT.Player('ytPlayerContainer', {
-            videoId: ytId,
-            playerVars: {
-              autoplay: 1,
-              start: startSec,
-              end: endSec > 0 ? endSec : undefined,
-              controls: 1,
-              rel: 0,
-              playsinline: 1,
-              vq: 'hd1080'
-            },
-            events: {
-              onReady: (event) => {
-                event.target.playVideo();
-                if (endSec > startSec) {
-                  ytLoopInterval = setInterval(() => {
-                    if (ytPlayer && ytPlayer.getCurrentTime) {
-                      const cur = ytPlayer.getCurrentTime();
-                      if (cur >= endSec) {
-                        ytPlayer.seekTo(startSec, true);
-                      }
-                    }
-                  }, 250);
-                }
-              },
-              onStateChange: (event) => {
-                if (event.data === YT.PlayerState.ENDED) {
-                  ytPlayer.seekTo(startSec, true);
-                  ytPlayer.playVideo();
-                }
-              }
-            }
-          });
-        }
+        let params = `autoplay=1&mute=0&vq=hd1080&high_res=1&playsinline=1&controls=1&rel=0`;
+        if (startSec > 0) params += `&start=${startSec}`;
+        if (endSec > startSec) params += `&end=${endSec}`;
+
+        iframe.src = `https://www.youtube-nocookie.com/embed/${ytId}?${params}`;
+      } else if (driveId) {
+        // Google Drive 專用 preview 嵌入 (徹底解決手機黑屏跑版)
+        directVideo.pause(); directVideo.src = ''; directVideo.style.display = 'none';
+        iframe.style.display = 'block';
+        iframe.src = `https://drive.google.com/file/d/${driveId}/preview`;
       } else {
-        if (ytPlayer && ytPlayer.destroy) { ytPlayer.destroy(); ytPlayer = null; }
-        ytContainer.style.display = 'none';
-        iframe.style.display = 'none'; iframe.src = '';
-
+        // 一般直接檔案 (GitHub 或伺服器 mp4)
+        iframe.src = ''; iframe.style.display = 'none';
         directVideo.style.display = 'block';
-        
-        let videoSrc = url;
-        if (driveId) {
-          videoSrc = `https://drive.google.com/uc?export=download&id=${driveId}`;
-        }
-
-        directVideo.src = videoSrc;
+        directVideo.src = url;
         directVideo.load();
-        
+
         directVideo.onloadedmetadata = () => {
-          // 智慧安全檢查：避免超出檔案總時長導致黑屏
           if (startSec > 0 && startSec < directVideo.duration) {
             directVideo.currentTime = startSec;
-          } else {
-            directVideo.currentTime = 0;
           }
-
-          // 嘗試播放；若被瀏覽器防擾政策阻擋，自動無縫轉為靜音播放開場
-          const promise = directVideo.play();
-          if (promise !== undefined) {
-            promise.catch(() => {
-              directVideo.muted = true;
-              directVideo.play();
-            });
-          }
+          directVideo.play().catch(() => {
+            directVideo.muted = true;
+            directVideo.play();
+          });
         };
 
         directVideo.ontimeupdate = () => {
@@ -703,14 +658,10 @@
     }
 
     function stopWinterVideo() {
-      clearInterval(ytLoopInterval);
-      if (ytPlayer && ytPlayer.destroy) { ytPlayer.destroy(); ytPlayer = null; }
       const iframe = document.getElementById('winterVideoIframe');
       const directVideo = document.getElementById('winterVideoDirect');
-      const ytContainer = document.getElementById('ytPlayerContainer');
-      if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
+      if (iframe) { iframe.src = ''; }
       if (directVideo) { directVideo.pause(); directVideo.src = ''; directVideo.style.display = 'none'; }
-      if (ytContainer) { ytContainer.style.display = 'none'; }
     }
 
     function openAdjustModal() {
@@ -807,7 +758,7 @@
     function addNewPlanet() {
       const name = prompt("請輸入新星系名稱：", "WINTER" + Math.floor(Math.random()*9000+1000));
       if (!name) return;
-      const url = prompt("請輸入影片連結 (支援 GitHub Release 下載連結、Google 雲端分享、YouTube)：");
+      const url = prompt("請輸入影片連結 (支援 YouTube / Shorts / Google 雲端 / MP4)：");
       if (!url) return;
 
       const colors = [
@@ -844,10 +795,9 @@
       const newName = prompt("重新命名星系名稱：", p.name);
       if (newName) p.name = newName.trim();
 
-      const url = prompt("更改當前星系的影片網址 (支援 GitHub / 雲端 / YouTube)：", p.videoUrl);
+      const url = prompt("更改當前星系的影片網址 (支援 YouTube / Shorts / 雲端 / MP4)：", p.videoUrl);
       if (url) {
         p.videoUrl = url.trim();
-        // 重設秒數避免舊秒數超出新影片
         p.adjust.start = 0;
         p.adjust.end = 0;
       }
