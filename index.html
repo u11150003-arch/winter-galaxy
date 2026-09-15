@@ -101,7 +101,7 @@
       width: 100%; height: 100%; display: block;
     }
 
-    /* 視訊通話分割容器 (電腦左右，手機上下) */
+    /* 視訊通話分割容器 */
     .video-chat-container {
       display: none;
       position: absolute;
@@ -423,16 +423,10 @@
           "detailColor": "#b87333",
           "ring": true,
           "size": 13,
-          "orbitIndex": 2.2,
+          "orbitIndex": 2.5,
           "speed": 0.007,
           "videoUrl": "https://youtu.be/_togP_6aIIo?si=76Cn1o_xgfrulRyp",
-          "adjust": {
-            "scale": 146,
-            "x": 50,
-            "y": 50,
-            "start": 0,
-            "end": 0
-          }
+          "adjust": { "scale": 146, "x": 50, "y": 50, "start": 0, "end": 0 }
         },
         {
           "id": "planet_1117",
@@ -442,16 +436,10 @@
           "detailColor": "#962d00",
           "ring": false,
           "size": 15,
-          "orbitIndex": 4.0,
+          "orbitIndex": 4.4,
           "speed": 0.005,
           "videoUrl": "https://youtu.be/Nxybqp22WNI?si=BnwmB_4uMEmIqO1a",
-          "adjust": {
-            "scale": 146,
-            "x": 44,
-            "y": 50,
-            "start": 0,
-            "end": 0
-          }
+          "adjust": { "scale": 146, "x": 44, "y": 50, "start": 0, "end": 0 }
         },
         {
           "id": "planet_0618",
@@ -461,31 +449,25 @@
           "detailColor": "#16a085",
           "ring": true,
           "size": 14,
-          "orbitIndex": 5.6,
+          "orbitIndex": 6.0,
           "speed": 0.0038,
           "videoUrl": "https://youtu.be/nOA1qS4AaiQ?si=aNod6kn17hyqYDTK",
-          "adjust": {
-            "scale": 190,
-            "x": 50,
-            "y": 50,
-            "start": 0,
-            "end": 0
-          }
+          "adjust": { "scale": 190, "x": 50, "y": 50, "start": 0, "end": 0 }
         }
       ]
     };
 
     const EXTRA_PLANETS = [
-      { name: "Mercury", isNamed: false, baseColor: "#a6a6a6", detailColor: "#666", size: 6, orbitIndex: 1.2, speed: 0.012 },
-      { name: "Venus", isNamed: false, baseColor: "#e0c184", detailColor: "#9c7c38", size: 9, orbitIndex: 1.7, speed: 0.009 },
-      { name: "Earth", isNamed: false, baseColor: "#2980b9", detailColor: "#27ae60", size: 10, orbitIndex: 3.1, speed: 0.006 },
-      { name: "Jupiter", isNamed: false, baseColor: "#cca066", detailColor: "#8f5b23", size: 18, orbitIndex: 4.8, speed: 0.004 },
-      { name: "Uranus", isNamed: false, baseColor: "#70d6ff", detailColor: "#4cc9f0", size: 12, orbitIndex: 6.4, speed: 0.0028 },
-      { name: "Neptune", isNamed: false, baseColor: "#3a0ca3", detailColor: "#4361ee", size: 11, orbitIndex: 7.4, speed: 0.0022 }
+      { name: "Mercury", isNamed: false, baseColor: "#a6a6a6", detailColor: "#666", size: 6, orbitIndex: 1.5, speed: 0.012 },
+      { name: "Venus", isNamed: false, baseColor: "#e0c184", detailColor: "#9c7c38", size: 9, orbitIndex: 2.0, speed: 0.009 },
+      { name: "Earth", isNamed: false, baseColor: "#2980b9", detailColor: "#27ae60", size: 10, orbitIndex: 3.4, speed: 0.006 },
+      { name: "Jupiter", isNamed: false, baseColor: "#cca066", detailColor: "#8f5b23", size: 18, orbitIndex: 5.2, speed: 0.004 },
+      { name: "Uranus", isNamed: false, baseColor: "#70d6ff", detailColor: "#4cc9f0", size: 12, orbitIndex: 6.8, speed: 0.0028 },
+      { name: "Neptune", isNamed: false, baseColor: "#3a0ca3", detailColor: "#4361ee", size: 11, orbitIndex: 7.8, speed: 0.0022 }
     ];
 
     // 升級版本 Key，強制覆蓋快取
-    const CONFIG_KEY = "winter_galaxy_config_v2026_depth_sort_v12";
+    const CONFIG_KEY = "winter_galaxy_config_v2026_center_offset_v13";
     let saved = localStorage.getItem(CONFIG_KEY);
     let galaxyConfig = saved ? JSON.parse(saved) : GALAXY_MASTER_CONFIG;
     let mainPlanets = galaxyConfig.planets;
@@ -559,7 +541,7 @@
           isAdmin = true;
           document.body.classList.add('admin-mode');
           document.getElementById('authBtn').innerText = "🔓 退出管理";
-          alert("登入成功！已解鎖視訊畫面調縮放/位置、更換中心小狗圖片、管理星系功能。");
+          alert("登入成功！已解鎖管理功能。");
         } else if (input !== null) {
           alert("密碼錯誤！");
         }
@@ -826,7 +808,7 @@
         detailColor: chosen.detail,
         ring: Math.random() > 0.4,
         size: 13,
-        orbitIndex: 2.2 + mainPlanets.length * 1.1,
+        orbitIndex: 2.5 + mainPlanets.length * 1.1,
         speed: 0.005 - (mainPlanets.length * 0.0006),
         videoUrl: url.trim(),
         adjust: { scale: 100, x: 50, y: 50, start: 0, end: 0 }
@@ -870,7 +852,7 @@
       }
     }
 
-    // 核心繪製：3D 深度分層（Depth Sorting）+ 大尺寸原圖小狗 + 周圍軌道外推
+    // 核心繪製：小狗中心向上偏移＋3D 深度排序＋軌道寬裕配置
     function initGalaxySystem() {
       const canvas = document.getElementById('galaxyCanvas');
       if (!canvas) return;
@@ -900,8 +882,7 @@
         }
       });
 
-      // 繪製單一星球本體
-      function drawPlanet(planet, px, py, isForeground, cx, cy) {
+      function drawPlanet(planet, px, py, cx, cy) {
         ctx.save();
         ctx.translate(px, py);
 
@@ -974,11 +955,11 @@
         ctx.translate(cx, cy);
         if (isZooming) ctx.scale(zoomFactor, zoomFactor);
 
-        // 周圍軌道外推擴展，給放大的小狗足夠運轉空間
-        const orbitBaseX = isMobile ? (w * 0.125) : (Math.min(w, h) * 0.175);
+        // 周圍軌道寬裕配置：軌道基底外擴
+        const orbitBaseX = isMobile ? (w * 0.135) : (Math.min(w, h) * 0.19);
         const orbitBaseY = orbitBaseX * 0.44;
 
-        // 繪製軌道線 (在底層)
+        // 繪製軌道線
         for (let i = 1; i <= 8; i++) {
           ctx.strokeStyle = "rgba(120, 180, 255, 0.18)";
           ctx.lineWidth = 1;
@@ -987,7 +968,7 @@
           ctx.stroke();
         }
 
-        // 預先計算所有行星的空間位置
+        // 計算行星空間位置
         const combined = [...mainPlanets, ...EXTRA_PLANETS];
         const planetPositions = combined.map(planet => {
           const rx = orbitBaseX * planet.orbitIndex;
@@ -998,48 +979,43 @@
           return { planet, px, py, isBehind: py < 0 };
         });
 
-        // -------------------------------------------------------------
-        // 第一層：繪製繞到小狗「後方」的星球 (py < 0)
-        // -------------------------------------------------------------
+        // 1. 先畫繞到小狗後方的星球
         planetPositions.filter(p => p.isBehind).forEach(p => {
-          drawPlanet(p.planet, p.px, p.py, false, cx, cy);
+          drawPlanet(p.planet, p.px, p.py, cx, cy);
         });
 
-        // -------------------------------------------------------------
-        // 第二層：宇宙中心小狗（尺寸放大、照原圖呈現、三層柔光發散）
-        // -------------------------------------------------------------
-        // 電腦版寬 140px，手機版寬 95px (比周圍星球大 2 倍以上，比例端莊)
-        const dogW = isMobile ? 95 : 140;
-        const dogH = dogW * 1.1; // 依原圖自然高寬比
-        const glowRadius = dogW * 0.85;
+        // 2. 宇宙中心：小狗恆星（向上偏移 offsetDogY，讓全身落在中心軌道內）
+        const dogW = isMobile ? 100 : 145;
+        const dogH = dogW * 1.12;
+        // 核心修正：垂直向上偏移約高長度的 16%，讓小狗腳掌與身體完全收進中心圓圈
+        const offsetDogY = -dogH * 0.16; 
+        const glowRadius = dogW * 0.82;
         const glowPulse = Math.sin(galaxyAngle * 2.5) * 8;
 
-        // 柔和自然發散光暈（無突兀硬白邊）
-        const outerGlow = ctx.createRadialGradient(0, 0, dogW * 0.2, 0, 0, glowRadius + glowPulse);
+        // 發散光暈 (同心向上偏移對齊小狗軀幹)
+        const outerGlow = ctx.createRadialGradient(0, offsetDogY, dogW * 0.15, 0, offsetDogY, glowRadius + glowPulse);
         outerGlow.addColorStop(0, 'rgba(140, 205, 255, 0.75)');
-        outerGlow.addColorStop(0.4, 'rgba(40, 150, 255, 0.45)');
-        outerGlow.addColorStop(0.75, 'rgba(14, 75, 200, 0.15)');
+        outerGlow.addColorStop(0.4, 'rgba(40, 150, 255, 0.42)');
+        outerGlow.addColorStop(0.75, 'rgba(14, 75, 200, 0.14)');
         outerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = outerGlow;
         ctx.beginPath();
-        ctx.arc(0, 0, glowRadius + glowPulse, 0, Math.PI * 2);
+        ctx.arc(0, offsetDogY, glowRadius + glowPulse, 0, Math.PI * 2);
         ctx.fill();
 
-        // 繪製原圖小狗（保持原圖透明通道與原貌，不做強行圓形裁剪）
+        // 繪製原圖小狗本體
         if (centerDogImg.complete && centerDogImg.naturalWidth !== 0) {
-          ctx.drawImage(centerDogImg, -dogW / 2, -dogH / 2, dogW, dogH);
+          ctx.drawImage(centerDogImg, -dogW / 2, -dogH / 2 + offsetDogY, dogW, dogH);
         } else {
           ctx.fillStyle = '#bce2ff';
           ctx.beginPath();
-          ctx.arc(0, 0, 24, 0, Math.PI * 2);
+          ctx.arc(0, offsetDogY, 24, 0, Math.PI * 2);
           ctx.fill();
         }
 
-        // -------------------------------------------------------------
-        // 第三層：繪製繞到小狗「前方」的星球 (py >= 0)
-        // -------------------------------------------------------------
+        // 3. 後畫繞到小狗前方的星球
         planetPositions.filter(p => !p.isBehind).forEach(p => {
-          drawPlanet(p.planet, p.px, p.py, true, cx, cy);
+          drawPlanet(p.planet, p.px, p.py, cx, cy);
         });
 
         ctx.restore();
