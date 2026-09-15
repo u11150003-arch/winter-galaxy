@@ -101,7 +101,7 @@
       width: 100%; height: 100%; display: block;
     }
 
-    /* 視訊通話分割容器 */
+    /* 視訊通話分割容器 (電腦左右，手機上下) */
     .video-chat-container {
       display: none;
       position: absolute;
@@ -411,7 +411,7 @@
     const ADMIN_PASSWORD = "admin";
     let isAdmin = false;
 
-    // 核心最新資料庫
+    // 核心最新資料庫 (完整整合最新指定網址與微調比例)
     const GALAXY_MASTER_CONFIG = {
       "centerDogImage": "https://lh3.googleusercontent.com/d/17WOfRelvxF9qJrmBwUpOuJGdgFaLj06o",
       "planets": [
@@ -425,8 +425,14 @@
           "size": 13,
           "orbitIndex": 2.5,
           "speed": 0.007,
-          "videoUrl": "https://youtu.be/_togP_6aIIo?si=76Cn1o_xgfrulRyp",
-          "adjust": { "scale": 146, "x": 50, "y": 50, "start": 0, "end": 0 }
+          "videoUrl": "https://youtu.be/dVhNMMejAtA?si=3hNsInSYm_CyfAcF",
+          "adjust": {
+            "scale": 146,
+            "x": 50,
+            "y": 50,
+            "start": 0,
+            "end": 0
+          }
         },
         {
           "id": "planet_1117",
@@ -439,7 +445,13 @@
           "orbitIndex": 4.4,
           "speed": 0.005,
           "videoUrl": "https://youtu.be/Nxybqp22WNI?si=BnwmB_4uMEmIqO1a",
-          "adjust": { "scale": 146, "x": 44, "y": 50, "start": 0, "end": 0 }
+          "adjust": {
+            "scale": 146,
+            "x": 44,
+            "y": 50,
+            "start": 0,
+            "end": 0
+          }
         },
         {
           "id": "planet_0618",
@@ -449,10 +461,16 @@
           "detailColor": "#16a085",
           "ring": true,
           "size": 14,
-          "orbitIndex": 6.0,
+          "orbitIndex": 6,
           "speed": 0.0038,
           "videoUrl": "https://youtu.be/nOA1qS4AaiQ?si=aNod6kn17hyqYDTK",
-          "adjust": { "scale": 190, "x": 50, "y": 50, "start": 0, "end": 0 }
+          "adjust": {
+            "scale": 190,
+            "x": 50,
+            "y": 50,
+            "start": 0,
+            "end": 0
+          }
         }
       ]
     };
@@ -467,7 +485,7 @@
     ];
 
     // 升級版本 Key，強制覆蓋快取
-    const CONFIG_KEY = "winter_galaxy_config_v2026_center_offset_v13";
+    const CONFIG_KEY = "winter_galaxy_config_v2026_update_winter0101_v14";
     let saved = localStorage.getItem(CONFIG_KEY);
     let galaxyConfig = saved ? JSON.parse(saved) : GALAXY_MASTER_CONFIG;
     let mainPlanets = galaxyConfig.planets;
@@ -541,7 +559,7 @@
           isAdmin = true;
           document.body.classList.add('admin-mode');
           document.getElementById('authBtn').innerText = "🔓 退出管理";
-          alert("登入成功！已解鎖管理功能。");
+          alert("登入成功！已解鎖視訊畫面調縮放/位置、更換中心小狗圖片、管理星系功能。");
         } else if (input !== null) {
           alert("密碼錯誤！");
         }
@@ -987,12 +1005,11 @@
         // 2. 宇宙中心：小狗恆星（向上偏移 offsetDogY，讓全身落在中心軌道內）
         const dogW = isMobile ? 100 : 145;
         const dogH = dogW * 1.12;
-        // 核心修正：垂直向上偏移約高長度的 16%，讓小狗腳掌與身體完全收進中心圓圈
         const offsetDogY = -dogH * 0.16; 
         const glowRadius = dogW * 0.82;
         const glowPulse = Math.sin(galaxyAngle * 2.5) * 8;
 
-        // 發散光暈 (同心向上偏移對齊小狗軀幹)
+        // 發散光暈
         const outerGlow = ctx.createRadialGradient(0, offsetDogY, dogW * 0.15, 0, offsetDogY, glowRadius + glowPulse);
         outerGlow.addColorStop(0, 'rgba(140, 205, 255, 0.75)');
         outerGlow.addColorStop(0.4, 'rgba(40, 150, 255, 0.42)');
