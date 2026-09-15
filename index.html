@@ -303,7 +303,8 @@
       <canvas id="galaxyCanvas"></canvas>
     </div>
 
-    <div class="video-chat-container" id="videoChatContainer">
+    <!-- 視訊通話分割容器：掛載 ensureAudioPlaying 雙重保障 -->
+    <div class="video-chat-container" id="videoChatContainer" onclick="ensureAudioPlaying()">
       <div class="video-win">
         <div class="video-win-header">
           <span id="winterVideoTitle">🪐 WINTER</span>
@@ -411,7 +412,7 @@
     const ADMIN_PASSWORD = "admin";
     let isAdmin = false;
 
-    // 核心最新資料庫 (完整整合最新指定網址與微調比例)
+    // 核心最新資料庫
     const GALAXY_MASTER_CONFIG = {
       "centerDogImage": "https://lh3.googleusercontent.com/d/17WOfRelvxF9qJrmBwUpOuJGdgFaLj06o",
       "planets": [
@@ -485,7 +486,7 @@
     ];
 
     // 升級版本 Key，強制覆蓋快取
-    const CONFIG_KEY = "winter_galaxy_config_v2026_update_winter0101_v14";
+    const CONFIG_KEY = "winter_galaxy_config_v2026_wildwest_sound_sync_v15";
     let saved = localStorage.getItem(CONFIG_KEY);
     let galaxyConfig = saved ? JSON.parse(saved) : GALAXY_MASTER_CONFIG;
     let mainPlanets = galaxyConfig.planets;
@@ -605,10 +606,18 @@
       renderSelectorChips();
     }
 
+    // ==============================================================
+    // 移植 WILDWEST 雙軌機制：點擊當下抓住 User Gesture 即刻有聲播放！
+    // ==============================================================
     function selectPlanetAndZoom(idx) {
       activePlanetIndex = idx;
       renderSelectorChips();
       targetPlanet = mainPlanets[idx];
+
+      // 步驟 1：點擊瞬間立即於背景有聲啟動，鎖定使用者授權
+      preloadAndPlayVideoSound(targetPlanet);
+
+      // 步驟 2：同步展開平滑 Zoom-In 特寫推進動畫
       isZooming = true;
       zoomFactor = 1;
 
@@ -625,7 +634,6 @@
 
       document.getElementById('winterVideoTitle').innerText = `🪐 WINTER [${planet.name}]`;
       applyVideoTransform(planet);
-      playWinterVideo(planet);
       initUserWebcam();
     }
 
@@ -639,7 +647,8 @@
       wrapper.style.transform = `scale(${scaleVal}) translate(${transX}%, ${transY}%)`;
     }
 
-    function playWinterVideo(planet) {
+    // WILDWEST 核心影片背景有聲啟動與循環引擎
+    function preloadAndPlayVideoSound(planet) {
       const url = planet.videoUrl;
       const iframe = document.getElementById('winterVideoIframe');
       const directVideo = document.getElementById('winterVideoDirect');
@@ -657,16 +666,29 @@
         directVideo.pause(); directVideo.src = ''; directVideo.style.display = 'none';
         iframe.style.display = 'block';
 
-        let params = `autoplay=1&mute=0&loop=1&playlist=${ytId}&vq=hd1080&high_res=1&playsinline=1&controls=1&rel=0`;
+        // 注入無縫循環、自動播放、解鎖音訊與 JS-API 指令
+        let params = `autoplay=1&mute=0&playsinline=1&loop=1&playlist=${ytId}&controls=1&rel=0&iv_load_policy=3&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
         if (startSec > 0) params += `&start=${startSec}`;
         if (endSec > startSec) params += `&end=${endSec}`;
 
         iframe.src = `https://www.youtube-nocookie.com/embed/${ytId}?${params}`;
 
+        // 發送有聲播放指令脈衝
+        const sendPlaySignal = () => {
+          if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute', args: [] }), '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+          }
+        };
+        setTimeout(sendPlaySignal, 300);
+        setTimeout(sendPlaySignal, 700);
+        setTimeout(sendPlaySignal, 1200);
+
         if (endSec > startSec) {
           const duration = (endSec - startSec) * 1000;
           loopTimer = setInterval(() => {
             iframe.src = `https://www.youtube-nocookie.com/embed/${ytId}?${params}`;
+            setTimeout(sendPlaySignal, 300);
           }, duration);
         }
       } else if (driveId) {
@@ -678,16 +700,21 @@
         directVideo.style.display = 'block';
         directVideo.loop = (endSec <= startSec);
         directVideo.src = url;
-        directVideo.load();
+        directVideo.muted = false;
+
+        const playPromise = directVideo.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            directVideo.muted = true;
+            directVideo.play().then(() => {
+              directVideo.muted = false;
+            });
+          });
+        }
 
         directVideo.onloadedmetadata = () => {
-          if (startSec > 0 && startSec < directVideo.duration) {
-            directVideo.currentTime = startSec;
-          }
-          directVideo.play().catch(() => {
-            directVideo.muted = true;
-            directVideo.play();
-          });
+          if (startSec > 0 && startSec < directVideo.duration) directVideo.currentTime = startSec;
+          directVideo.play().catch(() => {});
         };
 
         directVideo.ontimeupdate = () => {
@@ -701,6 +728,20 @@
           directVideo.currentTime = (startSec < directVideo.duration) ? startSec : 0;
           directVideo.play();
         };
+      }
+    }
+
+    // 點擊視訊視窗音訊雙保險
+    function ensureAudioPlaying() {
+      const iframe = document.getElementById('winterVideoIframe');
+      const directVideo = document.getElementById('winterVideoDirect');
+
+      if (directVideo.style.display !== 'none') {
+        directVideo.muted = false;
+        directVideo.play().catch(() => {});
+      } else if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute', args: [] }), '*');
+        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
       }
     }
 
@@ -765,7 +806,7 @@
       saveGalaxyState();
       closeAdjustModal();
       alert("✅ 視訊位置、縮放、起始與結束秒數已儲存！");
-      playWinterVideo(mainPlanets[activePlanetIndex]);
+      preloadAndPlayVideoSound(mainPlanets[activePlanetIndex]);
     }
 
     async function initUserWebcam() {
@@ -852,7 +893,7 @@
 
       saveGalaxyState();
       if (document.getElementById('videoChatContainer').classList.contains('active')) {
-        playWinterVideo(p);
+        preloadAndPlayVideoSound(p);
       }
     }
 
@@ -870,7 +911,7 @@
       }
     }
 
-    // 核心繪製：小狗中心向上偏移＋3D 深度排序＋軌道寬裕配置
+    // Canvas 繪圖：宇宙中心小狗恆星 + 3D 深度排序 + 軌道寬裕配置
     function initGalaxySystem() {
       const canvas = document.getElementById('galaxyCanvas');
       if (!canvas) return;
@@ -973,7 +1014,7 @@
         ctx.translate(cx, cy);
         if (isZooming) ctx.scale(zoomFactor, zoomFactor);
 
-        // 周圍軌道寬裕配置：軌道基底外擴
+        // 周圍軌道寬裕配置
         const orbitBaseX = isMobile ? (w * 0.135) : (Math.min(w, h) * 0.19);
         const orbitBaseY = orbitBaseX * 0.44;
 
@@ -1002,14 +1043,14 @@
           drawPlanet(p.planet, p.px, p.py, cx, cy);
         });
 
-        // 2. 宇宙中心：小狗恆星（向上偏移 offsetDogY，讓全身落在中心軌道內）
+        // 2. 宇宙中心：小狗恆星（向上微調 offsetDogY，完整落於中心軌道內）
         const dogW = isMobile ? 100 : 145;
         const dogH = dogW * 1.12;
         const offsetDogY = -dogH * 0.16; 
         const glowRadius = dogW * 0.82;
         const glowPulse = Math.sin(galaxyAngle * 2.5) * 8;
 
-        // 發散光暈
+        // 自然發散柔和光暈
         const outerGlow = ctx.createRadialGradient(0, offsetDogY, dogW * 0.15, 0, offsetDogY, glowRadius + glowPulse);
         outerGlow.addColorStop(0, 'rgba(140, 205, 255, 0.75)');
         outerGlow.addColorStop(0.4, 'rgba(40, 150, 255, 0.42)');
