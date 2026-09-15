@@ -411,7 +411,7 @@
     const ADMIN_PASSWORD = "admin";
     let isAdmin = false;
 
-    // 核心最新資料庫 (中心狗圖直鏈轉譯 + 3 顆指定星系完整設定)
+    // 核心最新資料庫
     const GALAXY_MASTER_CONFIG = {
       "centerDogImage": "https://lh3.googleusercontent.com/d/17WOfRelvxF9qJrmBwUpOuJGdgFaLj06o",
       "planets": [
@@ -484,8 +484,8 @@
       { name: "Neptune", isNamed: false, baseColor: "#3a0ca3", detailColor: "#4361ee", size: 11, orbitIndex: 7.2, speed: 0.0022 }
     ];
 
-    // 強制重置快取，載入宇宙中心狗圖與最新秒數位置
-    const CONFIG_KEY = "winter_galaxy_config_v2026_center_dog_v10";
+    // 升級版本 Key，強制覆蓋快取
+    const CONFIG_KEY = "winter_galaxy_config_v2026_center_dog_v11";
     let saved = localStorage.getItem(CONFIG_KEY);
     let galaxyConfig = saved ? JSON.parse(saved) : GALAXY_MASTER_CONFIG;
     let mainPlanets = galaxyConfig.planets;
@@ -500,7 +500,6 @@
     let planetScreenCoords = [];
     let loopTimer = null;
 
-    // 宇宙中心小狗貼圖物件
     let centerDogImg = new Image();
     centerDogImg.crossOrigin = "anonymous";
     centerDogImg.src = formatImageUrl(galaxyConfig.centerDogImage || GALAXY_MASTER_CONFIG.centerDogImage);
@@ -567,7 +566,6 @@
       }
     }
 
-    // 更換宇宙中心小狗圖片
     function changeCenterDogImage() {
       const raw = prompt("請輸入宇宙中心小狗圖片網址 (支援 Google 雲端共享連結)：", galaxyConfig.centerDogImage || "");
       if (raw) {
@@ -641,7 +639,6 @@
       wrapper.style.transform = `scale(${scaleVal}) translate(${transX}%, ${transY}%)`;
     }
 
-    // 核心循環播放引擎
     function playWinterVideo(planet) {
       const url = planet.videoUrl;
       const iframe = document.getElementById('winterVideoIframe');
@@ -873,7 +870,7 @@
       }
     }
 
-    // Canvas 繪圖：宇宙中心小狗恆星 + 雙層呼吸發光特效 + 真實行星
+    // Canvas 繪圖：宇宙中心小狗恆星（放大＋自然三層發散光暈，去除突兀細圈）
     function initGalaxySystem() {
       const canvas = document.getElementById('galaxyCanvas');
       if (!canvas) return;
@@ -908,6 +905,7 @@
         const h = canvas.height;
         const cx = w / 2;
         const cy = h / 2;
+        const isMobile = w < 768;
 
         ctx.clearRect(0, 0, w, h);
         planetScreenCoords = [];
@@ -931,61 +929,53 @@
         ctx.translate(cx, cy);
         if (isZooming) ctx.scale(zoomFactor, zoomFactor);
 
-        // ==========================================
-        // 宇宙中心：小狗恆星＋雙層神聖發光特效
-        // ==========================================
-        const dogRadius = 26; // 小狗直徑約 52px，比例適中醒目
-        const glowPulse = Math.sin(galaxyAngle * 3) * 6; // 隨旋轉微微呼吸跳動
+        // ========================================================
+        // 宇宙中心：小狗恆星 (大尺寸 + 柔焦三層發散星雲光暈，無硬框)
+        // ========================================================
+        // 電腦版半徑 48px (直徑約 96px)，手機版半徑 34px (直徑約 68px)，比周圍星球大 1.5 ~ 2.5 倍
+        const dogRadius = isMobile ? 34 : 48;
+        const glowPulse = Math.sin(galaxyAngle * 2.5) * 6; // 柔和呼吸起伏
 
-        // 1. 背後最外層銀河藍光暈
-        const outerGlow = ctx.createRadialGradient(0, 0, dogRadius * 0.8, 0, 0, 62 + glowPulse);
-        outerGlow.addColorStop(0, 'rgba(100, 180, 255, 0.85)');
-        outerGlow.addColorStop(0.4, 'rgba(30, 144, 255, 0.55)');
-        outerGlow.addColorStop(0.75, 'rgba(14, 75, 180, 0.2)');
+        // 1. 最外層發散星雲光暈 (Outer Nebula Halo)
+        const outerGlow = ctx.createRadialGradient(0, 0, dogRadius * 0.5, 0, 0, dogRadius * 2.2 + glowPulse);
+        outerGlow.addColorStop(0, 'rgba(120, 200, 255, 0.7)');
+        outerGlow.addColorStop(0.35, 'rgba(40, 150, 255, 0.4)');
+        outerGlow.addColorStop(0.7, 'rgba(10, 80, 220, 0.15)');
         outerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = outerGlow;
         ctx.beginPath();
-        ctx.arc(0, 0, 62 + glowPulse, 0, Math.PI * 2);
+        ctx.arc(0, 0, dogRadius * 2.2 + glowPulse, 0, Math.PI * 2);
         ctx.fill();
 
-        // 2. 小狗後背的緊貼金白色神聖光環
-        const innerGlow = ctx.createRadialGradient(0, 0, dogRadius * 0.6, 0, 0, dogRadius + 10);
-        innerGlow.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-        innerGlow.addColorStop(0.5, 'rgba(180, 225, 255, 0.8)');
+        // 2. 貼身深層柔和光霧 (Soft Aura)
+        const innerGlow = ctx.createRadialGradient(0, 0, dogRadius * 0.2, 0, 0, dogRadius * 1.3);
+        innerGlow.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+        innerGlow.addColorStop(0.5, 'rgba(180, 230, 255, 0.6)');
         innerGlow.addColorStop(1, 'rgba(30, 144, 255, 0)');
         ctx.fillStyle = innerGlow;
         ctx.beginPath();
-        ctx.arc(0, 0, dogRadius + 10, 0, Math.PI * 2);
+        ctx.arc(0, 0, dogRadius * 1.3, 0, Math.PI * 2);
         ctx.fill();
 
-        // 3. 完整去背的小狗本體 (若載入完成則圓形 clip 繪製，未完成則顯示發光球)
+        // 3. 完整去背小狗本體 (圓形遮罩自然裁剪，移除突兀白線)
         if (centerDogImg.complete && centerDogImg.naturalWidth !== 0) {
           ctx.save();
           ctx.beginPath();
           ctx.arc(0, 0, dogRadius, 0, Math.PI * 2);
           ctx.closePath();
-          ctx.clip(); // 完整裁成完美圓形去背效果
+          ctx.clip();
 
-          // 正中繪製小狗
+          // 繪製中心小狗
           ctx.drawImage(centerDogImg, -dogRadius, -dogRadius, dogRadius * 2, dogRadius * 2);
           ctx.restore();
-
-          // 加上一層精緻的極細金白星環邊框
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
-          ctx.lineWidth = 1.8;
-          ctx.beginPath();
-          ctx.arc(0, 0, dogRadius, 0, Math.PI * 2);
-          ctx.stroke();
         } else {
-          // 備用恆星
           ctx.fillStyle = '#bce2ff';
           ctx.beginPath();
-          ctx.arc(0, 0, 18, 0, Math.PI * 2);
+          ctx.arc(0, 0, 20, 0, Math.PI * 2);
           ctx.fill();
         }
 
         // 自適應軌道計算
-        const isMobile = w < 768;
         const orbitBaseX = isMobile ? (w * 0.11) : (Math.min(w, h) * 0.16);
         const orbitBaseY = orbitBaseX * 0.44;
 
